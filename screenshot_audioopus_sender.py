@@ -57,6 +57,7 @@ AUDIO_CHANNELS = 2
 # Opus accepts specific frame sizes.
 # 960 samples at 48 kHz = 20 ms.
 AUDIO_FRAME_SIZE = 960
+AUDIO_CAPTURE_FRAMES = AUDIO_FRAME_SIZE * 4
 
 OPUS_BITRATE = 128000
 
@@ -65,7 +66,7 @@ OPUS_BITRATE = 128000
 # VIDEO UDP PACKETS
 # ============================================================
 
-def send_video_frame(sock, address, frame_id, frame):
+def send_video_frame(sock, address, frame_id, frame, is_keyframe):
 
     chunk_count = (
         len(frame) + VIDEO_CHUNK_SIZE - 1
@@ -77,10 +78,11 @@ def send_video_frame(sock, address, frame_id, frame):
         end = start + VIDEO_CHUNK_SIZE
 
         packet = struct.pack(
-            "!IHH",
+            "!IHHB",
             frame_id,
             chunk_id,
-            chunk_count
+            chunk_count,
+            int(is_keyframe)
         ) + frame[start:end]
 
         sock.sendto(packet, address)
@@ -154,6 +156,7 @@ def video_server():
                         "tune": "zerolatency",
                         "g": str(FPS * FULL_REFRESH_SECONDS),
                         "keyint_min": str(FPS * FULL_REFRESH_SECONDS),
+                        "forced-idr": "1",
                         "sc_threshold": "0"
                     }
 
@@ -179,7 +182,8 @@ def video_server():
                         server,
                         viewer_address,
                         frame_id,
-                        bytes(encoded_packet)
+                        bytes(encoded_packet),
+                        encoded_packet.is_keyframe
                     )
 
                 frame_id = (frame_id + 1) & 0xFFFFFFFF
@@ -316,68 +320,73 @@ def audio_server():
 
             while True:
 
-                # Capture exactly 20 ms
-                audio = recorder.record(
-                    numframes=AUDIO_FRAME_SIZE
+                # Capture several Opus frames at once. This gives the
+                # Windows loopback recorder more scheduling headroom.
+                captured_audio = recorder.record(
+                    numframes=AUDIO_CAPTURE_FRAMES
                 )
 
-                audio = np.asarray(
-                    audio,
+                captured_audio = np.asarray(
+                    captured_audio,
                     dtype=np.float32
                 )
 
                 # Make sure we have the expected shape
-                if audio.ndim == 1:
+                if captured_audio.ndim == 1:
 
-                    audio = audio.reshape(
+                    captured_audio = captured_audio.reshape(
                         (-1, AUDIO_CHANNELS)
                     )
 
-                # Opus expects signed 16-bit PCM
-                pcm = np.clip(
-                    audio * 32767,
-                    -32768,
-                    32767
-                ).astype(
-                    np.int16
-                )
-
-                # Convert to bytes
-                pcm_bytes = pcm.tobytes()
-
-                # Encode with Opus
-                encoded = encoder.encode(
-                    pcm_bytes,
+                for offset in range(
+                    0,
+                    len(captured_audio),
                     AUDIO_FRAME_SIZE
-                )
+                ):
 
-                # UDP packet:
-                #
-                # 4 bytes sequence
-                # N bytes Opus data
-                #
-                packet = struct.pack(
-                    "!I",
-                    sequence
-                ) + encoded
+                    audio = captured_audio[
+                        offset:offset + AUDIO_FRAME_SIZE
+                    ]
 
-                server.sendto(
-                    packet,
-                    viewer_address
-                )
+                    if len(audio) != AUDIO_FRAME_SIZE:
+                        continue
 
-                audio_frames += 1
-
-                if audio_frames % 50 == 0:
-
-                    print(
-                        f"[AUDIO] Sent {audio_frames} frames; "
-                        f"level={float(np.max(np.abs(audio))):.5f}"
+                    # Opus expects signed 16-bit PCM
+                    pcm = np.clip(
+                        audio * 32767,
+                        -32768,
+                        32767
+                    ).astype(
+                        np.int16
                     )
 
-                sequence = (
-                    sequence + 1
-                ) & 0xFFFFFFFF
+                    encoded = encoder.encode(
+                        pcm.tobytes(),
+                        AUDIO_FRAME_SIZE
+                    )
+
+                    packet = struct.pack(
+                        "!I",
+                        sequence
+                    ) + encoded
+
+                    server.sendto(
+                        packet,
+                        viewer_address
+                    )
+
+                    audio_frames += 1
+
+                    if audio_frames % 50 == 0:
+
+                        print(
+                            f"[AUDIO] Sent {audio_frames} frames; "
+                            f"level={float(np.max(np.abs(audio))):.5f}"
+                        )
+
+                    sequence = (
+                        sequence + 1
+                    ) & 0xFFFFFFFF
 
     except Exception as e:
 

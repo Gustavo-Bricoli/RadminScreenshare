@@ -47,7 +47,7 @@ SENDER_IP = "26.160.75.111"
 
 VIDEO_PORT = 5000
 AUDIO_PORT = 5001
-VIDEO_CHUNK_HEADER_SIZE = 8
+VIDEO_CHUNK_HEADER_SIZE = 9
 
 AUDIO_SAMPLE_RATE = 48000
 AUDIO_CHANNELS = 2
@@ -460,6 +460,8 @@ class VideoReceiver:
             current_frame_id = None
             chunks = {}
             expected_chunks = None
+            current_keyframe = False
+            needs_keyframe = False
 
             while self.running:
 
@@ -468,21 +470,34 @@ class VideoReceiver:
                 if len(packet) <= VIDEO_CHUNK_HEADER_SIZE:
                     continue
 
-                frame_id, chunk_id, chunk_count = struct.unpack(
-                    "!IHH",
+                frame_id, chunk_id, chunk_count, is_keyframe = struct.unpack(
+                    "!IHHB",
                     packet[:VIDEO_CHUNK_HEADER_SIZE]
                 )
 
                 if current_frame_id is None or frame_id > current_frame_id:
 
+                    if current_frame_id is not None:
+
+                        if (
+                            frame_id > current_frame_id + 1
+                            or len(chunks) != expected_chunks
+                        ):
+
+                            needs_keyframe = True
+
                     current_frame_id = frame_id
                     chunks = {}
                     expected_chunks = chunk_count
+                    current_keyframe = bool(is_keyframe)
 
                 if frame_id != current_frame_id:
                     continue
 
                 if chunk_count != expected_chunks:
+                    continue
+
+                if bool(is_keyframe) != current_keyframe:
                     continue
 
                 chunks[chunk_id] = packet[VIDEO_CHUNK_HEADER_SIZE:]
@@ -496,6 +511,18 @@ class VideoReceiver:
                 )
 
                 chunks = {}
+
+                if needs_keyframe and not current_keyframe:
+                    continue
+
+                if current_keyframe:
+
+                    self.decoder = av.CodecContext.create(
+                        "h264",
+                        "r"
+                    )
+
+                    needs_keyframe = False
 
                 try:
 
@@ -523,6 +550,8 @@ class VideoReceiver:
                         "h264",
                         "r"
                     )
+
+                    needs_keyframe = True
 
                     continue
 
