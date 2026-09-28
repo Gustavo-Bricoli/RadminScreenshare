@@ -462,6 +462,7 @@ class VideoReceiver:
             expected_chunks = None
             current_keyframe = False
             needs_keyframe = False
+            previous_frame_complete = True
 
             while self.running:
 
@@ -481,7 +482,7 @@ class VideoReceiver:
 
                         if (
                             frame_id > current_frame_id + 1
-                            or len(chunks) != expected_chunks
+                            or not previous_frame_complete
                         ):
 
                             needs_keyframe = True
@@ -490,6 +491,7 @@ class VideoReceiver:
                     chunks = {}
                     expected_chunks = chunk_count
                     current_keyframe = bool(is_keyframe)
+                    previous_frame_complete = False
 
                 if frame_id != current_frame_id:
                     continue
@@ -511,6 +513,7 @@ class VideoReceiver:
                 )
 
                 chunks = {}
+                previous_frame_complete = True
 
                 if needs_keyframe and not current_keyframe:
                     continue

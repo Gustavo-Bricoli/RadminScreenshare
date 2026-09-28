@@ -152,12 +152,15 @@ def video_server():
                     encoder.framerate = Fraction(FPS, 1)
                     encoder.bit_rate = 5_000_000
                     encoder.options = {
-                        "preset": "veryfast",
+                        "preset": "ultrafast",
                         "tune": "zerolatency",
                         "g": str(FPS * FULL_REFRESH_SECONDS),
                         "keyint_min": str(FPS * FULL_REFRESH_SECONDS),
                         "forced-idr": "1",
-                        "sc_threshold": "0"
+                        "sc_threshold": "0",
+                        "bframes": "0",
+                        "rc-lookahead": "0",
+                        "threads": "1"
                     }
 
                     encoder.open()
@@ -315,7 +318,8 @@ def audio_server():
 
         with microphone.recorder(
             samplerate=AUDIO_SAMPLE_RATE,
-            channels=AUDIO_CHANNELS
+            channels=AUDIO_CHANNELS,
+            blocksize=AUDIO_CAPTURE_FRAMES
         ) as recorder:
 
             while True:
