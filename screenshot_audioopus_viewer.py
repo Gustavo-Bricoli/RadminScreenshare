@@ -1,8 +1,10 @@
 import os
 import socket
 import struct
+import sys
 import threading
 import queue
+import traceback
 from fractions import Fraction
 
 import av
@@ -12,6 +14,68 @@ import numpy as np
 import sounddevice as sd
 
 from PIL import Image, ImageTk
+
+
+CRASH_LOG = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "viewer_crash.log"
+)
+
+
+def log_exception(label, exception_type, exception, traceback_object):
+
+    with open(CRASH_LOG, "a", encoding="utf-8") as log_file:
+
+        log_file.write(f"\n[{label}]\n")
+
+        traceback.print_exception(
+            exception_type,
+            exception,
+            traceback_object,
+            file=log_file
+        )
+
+
+def handle_thread_exception(args):
+
+    log_exception(
+        "UNHANDLED THREAD EXCEPTION",
+        args.exc_type,
+        args.exc_value,
+        args.exc_traceback
+    )
+
+    threading.__excepthook__(args)
+
+
+def handle_exception(exception_type, exception, traceback_object):
+
+    if exception_type is KeyboardInterrupt:
+
+        sys.__excepthook__(
+            exception_type,
+            exception,
+            traceback_object
+        )
+
+        return
+
+    log_exception(
+        "UNHANDLED GUI EXCEPTION",
+        exception_type,
+        exception,
+        traceback_object
+    )
+
+    sys.__excepthook__(
+        exception_type,
+        exception,
+        traceback_object
+    )
+
+
+sys.excepthook = handle_exception
+threading.excepthook = handle_thread_exception
 
 
 if os.name == "nt":
@@ -524,6 +588,9 @@ class VideoReceiver:
                 if bool(is_keyframe) != current_keyframe:
                     continue
 
+                if chunk_id >= chunk_count:
+                    continue
+
                 chunks[chunk_id] = packet[VIDEO_CHUNK_HEADER_SIZE:]
 
                 if len(chunks) != expected_chunks:
@@ -604,6 +671,13 @@ class VideoReceiver:
         except Exception as e:
 
             if self.running:
+
+                log_exception(
+                    "VIDEO RECEIVE ERROR",
+                    type(e),
+                    e,
+                    e.__traceback__
+                )
 
                 print(
                     "[VIDEO] Receive error:",
