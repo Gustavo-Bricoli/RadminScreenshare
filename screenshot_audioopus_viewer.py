@@ -93,6 +93,32 @@ class AudioReceiver:
         self.audio_decoded = 0
         self.audio_callbacks = 0
 
+    def _queue_audio(self, audio):
+
+        try:
+
+            self.audio_queue.put_nowait(
+                audio.copy()
+            )
+
+        except queue.Full:
+
+            try:
+
+                self.audio_queue.get_nowait()
+
+            except queue.Empty:
+                pass
+
+            try:
+
+                self.audio_queue.put_nowait(
+                    audio.copy()
+                )
+
+            except queue.Full:
+                pass
+
     # --------------------------------------------------------
 
     def connect(self):
@@ -151,6 +177,24 @@ class AudioReceiver:
 
                     continue
 
+                except ConnectionResetError:
+
+                    self.audio_connected = False
+
+                    if self.running:
+
+                        print(
+                            "[AUDIO] Sender unavailable; "
+                            "retrying hello..."
+                        )
+
+                        self.socket.sendto(
+                            b"AUDIO_HELLO",
+                            (SENDER_IP, AUDIO_PORT)
+                        )
+
+                    continue
+
                 if len(packet) < 4:
                     continue
 
@@ -174,9 +218,42 @@ class AudioReceiver:
 
                     if sequence != expected:
 
-                        # Packet was lost or arrived
-                        # out of order.
-                        pass
+                        missing = (
+                            sequence - expected
+                        ) & 0xFFFFFFFF
+
+                        if 0 < missing <= 5:
+
+                            # Ask Opus to conceal short packet losses.
+                            for _ in range(missing):
+
+                                try:
+
+                                    concealed = self.decoder.decode(
+                                        b"",
+                                        AUDIO_FRAME_SIZE
+                                    )
+
+                                    concealed_audio = np.frombuffer(
+                                        concealed,
+                                        dtype=np.int16
+                                    ).astype(
+                                        np.float32
+                                    ) / 32768.0
+
+                                    self._queue_audio(
+                                        concealed_audio.reshape(
+                                            (-1, AUDIO_CHANNELS)
+                                        )
+                                    )
+
+                                except Exception:
+                                    break
+
+                        elif missing > 0x80000000:
+
+                            # This is an old or out-of-order packet.
+                            continue
 
                 self.last_sequence = sequence
 
@@ -218,32 +295,7 @@ class AudioReceiver:
                         f"{self.audio_decoded} packets"
                     )
 
-                # Add to playback queue
-                try:
-
-                    self.audio_queue.put_nowait(
-                        audio.copy()
-                    )
-
-                except queue.Full:
-
-                    # Drop old audio instead of
-                    # accumulating latency.
-                    try:
-
-                        self.audio_queue.get_nowait()
-
-                    except queue.Empty:
-                        pass
-
-                    try:
-
-                        self.audio_queue.put_nowait(
-                            audio.copy()
-                        )
-
-                    except queue.Full:
-                        pass
+                self._queue_audio(audio)
 
         except Exception as e:
 
