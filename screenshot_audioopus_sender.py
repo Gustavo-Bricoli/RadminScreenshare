@@ -9,6 +9,7 @@ import av
 import mss
 import numpy as np
 import soundcard as sc
+from av.video.frame import PictureType
 
 
 if os.name == "nt":
@@ -178,6 +179,12 @@ def video_server():
                 )
 
                 video_frame.pts = frame_id
+
+                if frame_id % (
+                    FPS * FULL_REFRESH_SECONDS
+                ) == 0:
+
+                    video_frame.pict_type = PictureType.I
 
                 for encoded_packet in encoder.encode(video_frame):
 

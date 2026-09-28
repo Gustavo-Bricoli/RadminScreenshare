@@ -525,15 +525,17 @@ class VideoReceiver:
                         "r"
                     )
 
-                    needs_keyframe = False
-
                 try:
 
                     decoded_frames = self.decoder.decode(
                         av.Packet(encoded_frame)
                     )
 
+                    decoded_any = False
+
                     for decoded_frame in decoded_frames:
+
+                        decoded_any = True
 
                         image = Image.fromarray(
                             decoded_frame.to_ndarray(
@@ -544,6 +546,10 @@ class VideoReceiver:
                         with self.lock:
 
                             self.latest_image = image
+
+                    if current_keyframe and decoded_any:
+
+                        needs_keyframe = False
 
                 except av.error.InvalidDataError:
 
