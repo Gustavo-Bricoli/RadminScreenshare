@@ -47,6 +47,7 @@ VIDEO_PORT = 5000
 AUDIO_PORT = 5001
 VIDEO_CHUNK_SIZE = 1200
 FULL_REFRESH_SECONDS = 1
+KEYFRAME_REPEATS = 2
 
 FPS = 30
 VIDEO_BITRATE = "5M"
@@ -88,6 +89,8 @@ def send_video_frame(sock, address, frame_id, frame, is_keyframe):
 
         sock.sendto(packet, address)
 
+    return chunk_count
+
 
 # ============================================================
 # VIDEO SERVER
@@ -127,6 +130,7 @@ def video_server():
 
             frame_interval = 1 / FPS
             frame_id = 0
+            video_frames = 0
 
             while True:
 
@@ -188,13 +192,32 @@ def video_server():
 
                 for encoded_packet in encoder.encode(video_frame):
 
-                    send_video_frame(
-                        server,
-                        viewer_address,
-                        frame_id,
-                        bytes(encoded_packet),
-                        encoded_packet.is_keyframe
+                    repeat_count = (
+                        KEYFRAME_REPEATS
+                        if encoded_packet.is_keyframe
+                        else 1
                     )
+
+                    for _ in range(repeat_count):
+
+                        chunk_count = send_video_frame(
+                            server,
+                            viewer_address,
+                            frame_id,
+                            bytes(encoded_packet),
+                            encoded_packet.is_keyframe
+                        )
+
+                    video_frames += 1
+
+                    if video_frames % FPS == 0:
+
+                        print(
+                            f"[VIDEO] Sent frame={frame_id}; "
+                            f"bytes={len(encoded_packet)}; "
+                            f"chunks={chunk_count}; "
+                            f"keyframe={encoded_packet.is_keyframe}"
+                        )
 
                 frame_id = (frame_id + 1) & 0xFFFFFFFF
 

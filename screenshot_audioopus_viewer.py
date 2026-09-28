@@ -463,6 +463,10 @@ class VideoReceiver:
             current_keyframe = False
             needs_keyframe = False
             previous_frame_complete = True
+            video_packets = 0
+            video_completed = 0
+            video_decoded = 0
+            video_dropped = 0
 
             while self.running:
 
@@ -475,6 +479,8 @@ class VideoReceiver:
                     "!IHHB",
                     packet[:VIDEO_CHUNK_HEADER_SIZE]
                 )
+
+                video_packets += 1
 
                 if current_frame_id is None or frame_id > current_frame_id:
 
@@ -514,8 +520,10 @@ class VideoReceiver:
 
                 chunks = {}
                 previous_frame_complete = True
+                video_completed += 1
 
                 if needs_keyframe and not current_keyframe:
+                    video_dropped += 1
                     continue
 
                 if current_keyframe:
@@ -547,9 +555,22 @@ class VideoReceiver:
 
                             self.latest_image = image
 
-                    if current_keyframe and decoded_any:
+                    if decoded_any:
 
-                        needs_keyframe = False
+                        video_decoded += 1
+
+                        if current_keyframe:
+
+                            needs_keyframe = False
+
+                        if video_decoded % 30 == 0:
+
+                            print(
+                                f"[VIDEO] Packets={video_packets}; "
+                                f"complete={video_completed}; "
+                                f"decoded={video_decoded}; "
+                                f"dropped={video_dropped}"
+                            )
 
                 except av.error.InvalidDataError:
 
