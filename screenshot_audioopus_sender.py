@@ -47,7 +47,7 @@ AUDIO_PORT = 5001
 VIDEO_CHUNK_SIZE = 1200
 FULL_REFRESH_SECONDS = 1
 
-FPS = 30
+FPS = 60
 VIDEO_BITRATE = "5M"
 MONITOR = 1
 
@@ -221,6 +221,16 @@ def audio_server():
     server = socket.socket(
         socket.AF_INET,
         socket.SOCK_DGRAM
+    )
+
+    server.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1
+    )
+
+    server.bind(
+        (HOST, AUDIO_PORT)
     )
 
     print(
