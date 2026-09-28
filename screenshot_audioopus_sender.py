@@ -47,7 +47,7 @@ VIDEO_PORT = 5000
 AUDIO_PORT = 5001
 VIDEO_CHUNK_SIZE = 1200
 FULL_REFRESH_SECONDS = 1
-KEYFRAME_REPEATS = 2
+KEYFRAME_REPEATS = 4
 
 FPS = 30
 VIDEO_BITRATE = "5M"
@@ -198,13 +198,15 @@ def video_server():
                         else 1
                     )
 
+                    encoded_bytes = bytes(encoded_packet)
+
                     for _ in range(repeat_count):
 
                         chunk_count = send_video_frame(
                             server,
                             viewer_address,
                             frame_id,
-                            bytes(encoded_packet),
+                            encoded_bytes,
                             encoded_packet.is_keyframe
                         )
 
@@ -214,7 +216,7 @@ def video_server():
 
                         print(
                             f"[VIDEO] Sent frame={frame_id}; "
-                            f"bytes={len(encoded_packet)}; "
+                            f"bytes={len(encoded_bytes)}; "
                             f"chunks={chunk_count}; "
                             f"keyframe={encoded_packet.is_keyframe}"
                         )
@@ -451,7 +453,7 @@ def main():
     print()
 
     print(
-        f"Video: TCP {VIDEO_PORT}"
+        f"Video: UDP {VIDEO_PORT}"
     )
 
     print(

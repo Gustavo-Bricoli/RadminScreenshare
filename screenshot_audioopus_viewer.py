@@ -442,6 +442,12 @@ class VideoReceiver:
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        self.socket.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_RCVBUF,
+            4 * 1024 * 1024
+        )
+
         self.socket.sendto(
             b"VIDEO_HELLO",
             (SENDER_IP, VIDEO_PORT)
@@ -467,6 +473,7 @@ class VideoReceiver:
             video_completed = 0
             video_decoded = 0
             video_dropped = 0
+            video_incomplete = 0
 
             while self.running:
 
@@ -492,6 +499,15 @@ class VideoReceiver:
                         ):
 
                             needs_keyframe = True
+                            video_incomplete += 1
+
+                            if video_incomplete % 10 == 0:
+
+                                print(
+                                    f"[VIDEO] Recovery waiting; "
+                                    f"frame={frame_id}; "
+                                    f"incomplete={video_incomplete}"
+                                )
 
                     current_frame_id = frame_id
                     chunks = {}
