@@ -264,6 +264,7 @@ def audio_server():
     viewer_address = None
 
     sequence = 0
+    audio_frames = 0
 
     # --------------------------------------------------------
     # Wait for viewer
@@ -354,6 +355,15 @@ def audio_server():
                     packet,
                     viewer_address
                 )
+
+                audio_frames += 1
+
+                if audio_frames % 50 == 0:
+
+                    print(
+                        f"[AUDIO] Sent {audio_frames} frames; "
+                        f"level={float(np.max(np.abs(audio))):.5f}"
+                    )
 
                 sequence = (
                     sequence + 1

@@ -43,7 +43,7 @@ from opuslib import Decoder
 # CONFIGURATION
 # ============================================================
 
-SENDER_IP = "26.123.65.96"
+SENDER_IP = "26.160.75.111"
 
 VIDEO_PORT = 5000
 AUDIO_PORT = 5001
@@ -88,6 +88,11 @@ class AudioReceiver:
 
         self.stream = None
 
+        self.audio_connected = False
+        self.audio_packets = 0
+        self.audio_decoded = 0
+        self.audio_callbacks = 0
+
     # --------------------------------------------------------
 
     def connect(self):
@@ -101,6 +106,8 @@ class AudioReceiver:
             socket.AF_INET,
             socket.SOCK_DGRAM
         )
+
+        self.socket.settimeout(1.0)
 
         # Tell sender where we are
         self.socket.sendto(
@@ -123,9 +130,26 @@ class AudioReceiver:
 
             while self.running:
 
-                packet, address = (
-                    self.socket.recvfrom(4096)
-                )
+                try:
+
+                    packet, address = (
+                        self.socket.recvfrom(4096)
+                    )
+
+                except socket.timeout:
+
+                    if not self.audio_connected:
+
+                        self.socket.sendto(
+                            b"AUDIO_HELLO",
+                            (SENDER_IP, AUDIO_PORT)
+                        )
+
+                        print(
+                            "[AUDIO] Retrying hello..."
+                        )
+
+                    continue
 
                 if len(packet) < 4:
                     continue
@@ -137,6 +161,9 @@ class AudioReceiver:
                 )[0]
 
                 encoded = packet[4:]
+
+                self.audio_connected = True
+                self.audio_packets += 1
 
                 # Detect old/out-of-order packets
                 if self.last_sequence is not None:
@@ -181,6 +208,15 @@ class AudioReceiver:
                 audio = audio.reshape(
                     (-1, AUDIO_CHANNELS)
                 )
+
+                self.audio_decoded += 1
+
+                if self.audio_decoded % 50 == 0:
+
+                    print(
+                        f"[AUDIO] Received and decoded "
+                        f"{self.audio_decoded} packets"
+                    )
 
                 # Add to playback queue
                 try:
@@ -233,6 +269,8 @@ class AudioReceiver:
                 "[AUDIO]",
                 status
             )
+
+        self.audio_callbacks += 1
 
         audio = self.pending_audio
 
