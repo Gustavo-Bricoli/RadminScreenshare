@@ -1,0 +1,27 @@
+{
+  "name": "radmin-screen-webrtc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"node server.mjs\" \"vite --host 0.0.0.0\"",
+    "server": "node server.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@livekit/components-react": "^2.9.1",
+    "@livekit/components-styles": "^1.1.5",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "livekit-client": "^2.15.6",
+    "livekit-server-sdk": "^2.15.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.1",
+    "vite": "^7.1.7"
+  }
+}

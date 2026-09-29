@@ -1,0 +1,4 @@
+livekit
+mss
+numpy
+soundcard

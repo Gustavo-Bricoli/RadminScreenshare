@@ -1,9 +1,9 @@
 import threading
 import time
 
-from audio_sender import run_audio_server
-from screen_config import AUDIO_PORT, FPS, OPUS_BITRATE, VIDEO_PORT
-from video_sender import run_video_server
+from UDFBruto.audio_sender import run_audio_server
+from UDFBruto.screen_config import AUDIO_PORT, FPS, OPUS_BITRATE, VIDEO_PORT
+from UDFBruto.video_sender import run_video_server
 
 
 def main():

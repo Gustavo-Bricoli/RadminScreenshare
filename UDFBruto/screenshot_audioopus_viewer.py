@@ -1,4 +1,4 @@
-from viewer_main import main
+from UDFBruto.viewer_main import main
 
 
 if __name__ == "__main__":

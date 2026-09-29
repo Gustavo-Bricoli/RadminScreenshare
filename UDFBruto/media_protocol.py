@@ -2,7 +2,7 @@ import socket
 import struct
 import time
 
-from screen_config import (
+from UDFBruto.screen_config import (
     AUDIO_PORT,
     VIDEO_CHUNK_HEADER_FORMAT,
     VIDEO_CHUNK_SIZE,

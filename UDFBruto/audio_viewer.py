@@ -5,8 +5,8 @@ import threading
 import numpy as np
 import sounddevice as sd
 
-from media_protocol import parse_audio_packet
-from screen_config import (
+from UDFBruto.media_protocol import parse_audio_packet
+from UDFBruto.screen_config import (
     AUDIO_CHANNELS,
     AUDIO_FRAME_SIZE,
     AUDIO_PORT,

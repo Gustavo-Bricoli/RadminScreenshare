@@ -7,8 +7,8 @@ import mss
 import numpy as np
 from av.video.frame import PictureType
 
-from media_protocol import send_video_frame, wait_for_hello
-from screen_config import (
+from UDFBruto.media_protocol import send_video_frame, wait_for_hello
+from UDFBruto.screen_config import (
     FPS,
     FULL_REFRESH_SECONDS,
     HOST,

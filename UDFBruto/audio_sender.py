@@ -3,7 +3,7 @@ import socket
 import numpy as np
 import soundcard as sc
 
-from screen_config import (
+from UDFBruto.screen_config import (
     AUDIO_CHANNELS,
     AUDIO_CAPTURE_FRAMES,
     AUDIO_FRAME_SIZE,
@@ -12,12 +12,12 @@ from screen_config import (
     HOST,
     OPUS_BITRATE
 )
-from media_protocol import encode_audio_packet, wait_for_hello
+from UDFBruto.media_protocol import encode_audio_packet, wait_for_hello
 
 
 def run_audio_server():
 
-    from screen_config import configure_opus_library
+    from UDFBruto.screen_config import configure_opus_library
     configure_opus_library()
 
     from opuslib import Encoder

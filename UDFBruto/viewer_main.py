@@ -4,8 +4,8 @@ import traceback
 
 import tkinter as tk
 
-from audio_viewer import AudioReceiver
-from video_viewer import VideoReceiver
+from UDFBruto.audio_viewer import AudioReceiver
+from UDFBruto.video_viewer import VideoReceiver
 
 
 CRASH_LOG = os.path.join(

@@ -1,4 +1,4 @@
-from sender_main import main
+from UDFBruto.sender_main import main
 
 
 if __name__ == "__main__":

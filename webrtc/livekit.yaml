@@ -1,0 +1,13 @@
+port: 7880
+
+rtc:
+  udp_port: 17882
+  tcp_port: 17881
+  node_ip: 192.168.68.108
+  use_ice_lite: true
+
+keys:
+  devkey: secret
+
+logging:
+  level: info

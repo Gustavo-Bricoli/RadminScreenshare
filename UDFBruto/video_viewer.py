@@ -6,8 +6,8 @@ import tkinter as tk
 
 from PIL import Image, ImageTk
 
-from media_protocol import parse_video_packet
-from screen_config import SENDER_IP, VIDEO_PORT
+from UDFBruto.media_protocol import parse_video_packet
+from UDFBruto.screen_config import SENDER_IP, VIDEO_PORT
 
 
 class VideoReceiver:
