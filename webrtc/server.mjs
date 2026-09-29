@@ -23,6 +23,13 @@ app.get("/api/token", async (request, response) => {
   ).trim();
   const role = String(request.query.role || "viewer").trim();
 
+  console.info("[WEBRTC] Token requested", {
+    origin: request.get("origin") || "unknown",
+    room,
+    identity,
+    role
+  });
+
   if (!room || !identity) {
     response.status(400).json({ error: "room and identity are required" });
     return;
@@ -41,8 +48,16 @@ app.get("/api/token", async (request, response) => {
     canPublish: role === "publisher"
   });
 
+  const jwt = await token.toJwt();
+  console.info("[WEBRTC] Token issued", {
+    room,
+    identity,
+    role,
+    livekitUrl
+  });
+
   response.json({
-    token: await token.toJwt(),
+    token: jwt,
     url: livekitUrl,
     room,
     identity

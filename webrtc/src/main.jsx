@@ -4,17 +4,104 @@ import {
   LiveKitRoom,
   RoomAudioRenderer,
   VideoTrack,
+  useRoomContext,
   useTracks
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { RoomEvent, Track } from "livekit-client";
 import "@livekit/components-styles";
 import "./styles.css";
 
 function RoomContent() {
+  const room = useRoomContext();
   const tracks = useTracks([
     { source: Track.Source.ScreenShare, withPlaceholder: false }
   ]);
   const screenTrack = tracks[0];
+
+  React.useEffect(() => {
+    console.info("[WEBRTC] Viewer room state", {
+      state: room.state,
+      room: room.name,
+      remoteParticipants: Array.from(
+        room.remoteParticipants.values(),
+        (participant) => participant.identity
+      )
+    });
+
+    const onConnected = () => {
+      console.info("[WEBRTC] Connected to LiveKit", {
+        room: room.name,
+        remoteParticipants: room.remoteParticipants.size
+      });
+    };
+    const onDisconnected = (reason) => {
+      console.warn("[WEBRTC] Disconnected from LiveKit", { reason });
+    };
+    const onConnectionStateChanged = (state) => {
+      console.info("[WEBRTC] LiveKit connection state", { state });
+    };
+    const onParticipantConnected = (participant) => {
+      console.info("[WEBRTC] Remote participant connected", {
+        identity: participant.identity
+      });
+    };
+    const onParticipantDisconnected = (participant) => {
+      console.warn("[WEBRTC] Remote participant disconnected", {
+        identity: participant.identity
+      });
+    };
+    const onTrackSubscribed = (track, publication, participant) => {
+      console.info("[WEBRTC] Remote track subscribed", {
+        identity: participant.identity,
+        kind: track.kind,
+        source: publication.source,
+        trackSid: publication.trackSid
+      });
+    };
+    const onTrackPublished = (publication, participant) => {
+      console.info("[WEBRTC] Remote track published", {
+        identity: participant.identity,
+        kind: publication.kind,
+        source: publication.source,
+        trackSid: publication.trackSid
+      });
+    };
+    const onTrackSubscriptionFailed = (trackSid, participant) => {
+      console.error("[WEBRTC] Remote track subscription failed", {
+        identity: participant.identity,
+        trackSid
+      });
+    };
+
+    room.on(RoomEvent.Connected, onConnected);
+    room.on(RoomEvent.Disconnected, onDisconnected);
+    room.on(RoomEvent.ConnectionStateChanged, onConnectionStateChanged);
+    room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
+    room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+    room.on(RoomEvent.TrackPublished, onTrackPublished);
+    room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
+    room.on(RoomEvent.TrackSubscriptionFailed, onTrackSubscriptionFailed);
+
+    return () => {
+      room.off(RoomEvent.Connected, onConnected);
+      room.off(RoomEvent.Disconnected, onDisconnected);
+      room.off(RoomEvent.ConnectionStateChanged, onConnectionStateChanged);
+      room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
+      room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+      room.off(RoomEvent.TrackPublished, onTrackPublished);
+      room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
+      room.off(RoomEvent.TrackSubscriptionFailed, onTrackSubscriptionFailed);
+    };
+  }, [room]);
+
+  React.useEffect(() => {
+    if (screenTrack) {
+      console.info("[WEBRTC] Screen track available to viewer", {
+        identity: screenTrack.participant.identity,
+        trackSid: screenTrack.publication.trackSid
+      });
+    }
+  }, [screenTrack]);
 
   return (
     <main className="room">
@@ -61,14 +148,25 @@ function App() {
   async function joinRoom(event) {
     event.preventDefault();
     setError("");
+    console.info("[WEBRTC] Requesting viewer token", {
+      origin: window.location.origin,
+      room,
+      identity
+    });
 
     try {
       const query = new URLSearchParams({ room, identity });
       const response = await fetch(`/api/token?${query}`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to join");
+      console.info("[WEBRTC] Viewer token received", {
+        room: body.room,
+        identity: body.identity,
+        livekitUrl: body.url
+      });
       setSession(body);
     } catch (joinError) {
+      console.error("[WEBRTC] Viewer token request failed", joinError);
       setError(joinError.message);
     }
   }
