@@ -50,17 +50,23 @@ class Viewer:
             f"{YOUR_RADMIN_IP}:{PORT}..."
         )
 
-        self.socket = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_STREAM
-        )
-
-        self.socket.connect(
-            (
-                YOUR_RADMIN_IP,
-                PORT
+        try:
+            self.socket = socket.socket(
+                socket.AF_INET,
+                socket.SOCK_STREAM
             )
-        )
+
+            self.socket.connect(
+                (
+                    YOUR_RADMIN_IP,
+                    PORT
+                )
+            )
+
+        except OSError as exc:
+            print(f"Connection failed: {exc}")
+            self.root.after(2000, self.connect)
+            return
 
         print("Connected!")
 

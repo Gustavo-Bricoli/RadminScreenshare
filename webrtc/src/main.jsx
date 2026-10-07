@@ -13,6 +13,8 @@ import "./styles.css";
 
 function RoomContent() {
   const room = useRoomContext();
+  const stageRef = React.useRef(null);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
   const tracks = useTracks([
     { source: Track.Source.ScreenShare, withPlaceholder: false }
   ]);
@@ -103,18 +105,68 @@ function RoomContent() {
     }
   }, [screenTrack]);
 
+  React.useEffect(() => {
+    const stage = stageRef.current;
+    const updateFullscreen = () => {
+      if (document.fullscreenEnabled) {
+        setIsFullscreen(document.fullscreenElement === stage);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", updateFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", updateFullscreen);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!isFullscreen || document.fullscreenElement) return;
+
+    const exitOnEscape = (event) => {
+      if (event.key === "Escape") setIsFullscreen(false);
+    };
+    document.addEventListener("keydown", exitOnEscape);
+    return () => document.removeEventListener("keydown", exitOnEscape);
+  }, [isFullscreen]);
+
+  async function toggleFullscreen() {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (stage.requestFullscreen) {
+        await stage.requestFullscreen();
+      } else {
+        setIsFullscreen((fullscreen) => !fullscreen);
+      }
+    } catch (fullscreenError) {
+      console.warn("[WEBRTC] Fullscreen request failed; using page fullscreen", fullscreenError);
+      setIsFullscreen((fullscreen) => !fullscreen);
+    }
+  }
+
   return (
-    <main className="room">
+    <main className={`room${isFullscreen ? " is-fullscreen" : ""}`}>
       <header className="room-header">
         <span className="live-dot" />
         <span>Live screen</span>
       </header>
-      <section className="screen-stage">
+      <section className="screen-stage" ref={stageRef}>
         {screenTrack ? (
-          <VideoTrack
-            trackRef={screenTrack}
-            className="screen-video"
-          />
+          <>
+            <VideoTrack trackRef={screenTrack} className="screen-video" />
+            <button
+              className="fullscreen-button"
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir tela cheia"}
+              title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            >
+              {isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            </button>
+          </>
         ) : (
           <div className="empty-state">Waiting for the sender...</div>
         )}

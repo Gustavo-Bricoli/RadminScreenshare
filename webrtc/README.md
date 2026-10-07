@@ -36,6 +36,10 @@ Install the publisher dependencies once:
 python -m pip install -r requirements.txt
 ```
 
+The publisher defaults to 1280x720 at 15 FPS to reduce CPU and RAM use. You can
+override these values with `LIVEKIT_VIDEO_MAX_WIDTH`, `LIVEKIT_VIDEO_MAX_HEIGHT`
+and `LIVEKIT_VIDEO_FPS`.
+
 Open `http://localhost:5173` on the PC. For a phone on the same Wi-Fi, set `LIVEKIT_URL` in `.env` to the PC's LAN address, for example:
 
 ```text

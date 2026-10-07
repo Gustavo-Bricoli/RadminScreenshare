@@ -12,6 +12,7 @@ import mss
 import numpy as np
 import soundcard as sc
 from livekit import rtc
+from PIL import Image
 
 
 ROOM = os.environ.get("LIVEKIT_ROOM", "screen-share")
@@ -22,13 +23,32 @@ TOKEN_URL = os.environ.get(
 )
 VIDEO_FPS = int(os.environ.get("LIVEKIT_VIDEO_FPS", "30"))
 VIDEO_MONITOR = int(os.environ.get("LIVEKIT_MONITOR", "1"))
+VIDEO_MAX_WIDTH = int(os.environ.get("LIVEKIT_VIDEO_MAX_WIDTH", "1920"))
+VIDEO_MAX_HEIGHT = int(os.environ.get("LIVEKIT_VIDEO_MAX_HEIGHT", "1080"))
 AUDIO_SAMPLE_RATE = 48000
 AUDIO_CHANNELS = 2
 AUDIO_CAPTURE_BUFFER_SIZE = int(
     os.environ.get("LIVEKIT_AUDIO_CAPTURE_BUFFER_SIZE", "4800")
 )
-AUDIO_QUEUE_SIZE = 5
+AUDIO_QUEUE_SIZE = int(
+    os.environ.get("LIVEKIT_AUDIO_QUEUE_SIZE", "10")
+)
+AUDIO_SOURCE_QUEUE_MS = int(
+    os.environ.get("LIVEKIT_AUDIO_SOURCE_QUEUE_MS", "300")
+)
 logger = logging.getLogger("webrtc.publisher")
+
+
+def get_video_dimensions(width, height):
+    scale = min(
+        1,
+        VIDEO_MAX_WIDTH / width,
+        VIDEO_MAX_HEIGHT / height
+    )
+    return (
+        max(2, int(width * scale) // 2 * 2),
+        max(2, int(height * scale) // 2 * 2)
+    )
 
 
 def get_publisher_token():
@@ -58,15 +78,29 @@ def capture_video(source, stop_event, loop, error_future):
             while not stop_event.is_set():
                 screenshot = capture.grab(monitor)
                 width, height = screenshot.size
+                output_width, output_height = get_video_dimensions(width, height)
+                rgb = screenshot.rgb
+                if (output_width, output_height) != (width, height):
+                    rgb = Image.frombytes("RGB", (width, height), rgb).resize(
+                        (output_width, output_height),
+                        Image.Resampling.BILINEAR
+                    ).tobytes()
                 frame = rtc.VideoFrame(
-                    width,
-                    height,
+                    output_width,
+                    output_height,
                     rtc.VideoBufferType.RGB24,
-                    screenshot.rgb
+                    rgb
                 )
                 source.capture_frame(frame)
                 if first_frame:
-                    logger.info("Screen capture started: %sx%s", width, height)
+                    logger.info(
+                        "Screen capture started: %sx%s -> %sx%s at %s FPS",
+                        width,
+                        height,
+                        output_width,
+                        output_height,
+                        VIDEO_FPS
+                    )
                     first_frame = False
                 next_frame += interval
                 stop_event.wait(
@@ -145,8 +179,6 @@ def capture_audio(audio_queue, stop_event):
             blocksize=AUDIO_CAPTURE_BUFFER_SIZE
         ) as recorder:
             last_audio_log = time.monotonic()
-            block_duration = AUDIO_CAPTURE_BUFFER_SIZE / AUDIO_SAMPLE_RATE
-            next_block_time = time.monotonic() + block_duration
             audio_squared_sum = 0.0
             audio_sample_count = 0
             audio_peak = 0.0
@@ -180,14 +212,6 @@ def capture_audio(audio_queue, stop_event):
                     audio_sample_count = 0
                     audio_peak = 0.0
                     dropped_audio_blocks = 0
-
-                now = time.monotonic()
-                if now < next_block_time:
-                    stop_event.wait(next_block_time - now)
-                    now = time.monotonic()
-                next_block_time += block_duration
-                if next_block_time < now:
-                    next_block_time = now + block_duration
 
                 if enqueue_audio(audio_queue, audio):
                     dropped_audio_blocks += 1
@@ -272,15 +296,17 @@ async def main():
         with mss.MSS() as capture:
             width = capture.monitors[VIDEO_MONITOR]["width"]
             height = capture.monitors[VIDEO_MONITOR]["height"]
+        output_width, output_height = get_video_dimensions(width, height)
 
         video_source = rtc.VideoSource(
-            width,
-            height,
+            output_width,
+            output_height,
             is_screencast=True
         )
         audio_source = rtc.AudioSource(
             AUDIO_SAMPLE_RATE,
-            AUDIO_CHANNELS
+            AUDIO_CHANNELS,
+            queue_size_ms=AUDIO_SOURCE_QUEUE_MS
         )
 
         video_track = rtc.LocalVideoTrack.create_video_track(

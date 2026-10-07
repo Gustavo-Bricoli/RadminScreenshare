@@ -34,9 +34,20 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #3a4d59; border-radiu
 button { padding: 12px 16px; border: 0; border-radius: 3px; color: #07120f; background: #61d0b3; cursor: pointer; font: 700 14px Arial, sans-serif; }
 .error { color: #ff9d91; font: 13px Arial, sans-serif; }
 
-.room { min-height: 100vh; background: #070b0f; }
+.room { width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: #070b0f; }
 .room-header { display: flex; gap: 9px; align-items: center; height: 48px; padding: 0 18px; color: #b7c4ce; font: 13px Arial, sans-serif; border-bottom: 1px solid #1c2933; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ed7664; }
-.screen-stage { display: grid; place-items: center; height: calc(100vh - 48px); padding: 12px; }
+.screen-stage { position: relative; display: grid; place-items: center; height: calc(100vh - 48px); height: calc(100dvh - 48px); min-height: 0; padding: 12px; }
 .screen-video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.screen-video video { width: 100%; height: 100%; object-fit: contain; }
+.fullscreen-button { position: absolute; top: 20px; right: 20px; z-index: 1; padding: 9px 12px; border: 1px solid #ffffff40; border-radius: 3px; color: #fff; background: #101820d9; }
+.fullscreen-button:hover { background: #263640; }
+.fullscreen-button:focus-visible { outline: 2px solid #61d0b3; outline-offset: 2px; }
+.screen-stage:fullscreen, .screen-stage:-webkit-full-screen { width: 100vw; height: 100vh; height: 100dvh; padding: 0; background: #000; }
+.screen-stage:fullscreen .screen-video, .screen-stage:-webkit-full-screen .screen-video { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+.screen-stage:fullscreen .fullscreen-button, .screen-stage:-webkit-full-screen .fullscreen-button { top: 16px; right: 16px; }
+.room.is-fullscreen { position: fixed; inset: 0; z-index: 9999; width: 100vw; height: 100vh; height: 100dvh; }
+.room.is-fullscreen .room-header { display: none; }
+.room.is-fullscreen .screen-stage { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; }
+.room.is-fullscreen .screen-video { width: 100%; height: 100%; object-fit: contain !important; object-position: center; }
 .empty-state { display: grid; place-items: center; height: 100%; color: #81909c; font: 14px Arial, sans-serif; }
