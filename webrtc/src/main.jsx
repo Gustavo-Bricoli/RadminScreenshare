@@ -7,7 +7,12 @@ import {
   useRoomContext,
   useTracks
 } from "@livekit/components-react";
-import { RoomEvent, Track } from "livekit-client";
+import {
+  createLocalScreenTracks,
+  Room,
+  RoomEvent,
+  Track
+} from "livekit-client";
 import "@livekit/components-styles";
 import "./styles.css";
 
@@ -191,11 +196,118 @@ function MediaRoom({ token, url }) {
   );
 }
 
+function BrowserPublisher({ token, url, onExit }) {
+  const videoRef = React.useRef(null);
+  const roomRef = React.useRef(null);
+  const tracksRef = React.useRef([]);
+  const [status, setStatus] = React.useState("Starting screen capture...");
+  const [error, setError] = React.useState("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function startPublisher() {
+      try {
+        const room = new Room();
+        roomRef.current = room;
+        const tracks = await createLocalScreenTracks({
+          audio: true,
+          resolution: {
+            width: 1920,
+            height: 1080,
+            frameRate: 30
+          }
+        });
+        if (cancelled) {
+          tracks.forEach((track) => track.stop());
+          return;
+        }
+
+        tracksRef.current = tracks;
+        await room.connect(url, token);
+        for (const track of tracks) {
+          await room.localParticipant.publishTrack(track, {
+            source: track.source,
+            name: track.kind === "video" ? "screen" : "system-audio"
+          });
+        }
+
+        const videoTrack = tracks.find((track) => track.kind === "video");
+        if (videoTrack && videoRef.current) {
+          videoTrack.attach(videoRef.current);
+        }
+        setStatus("Browser publisher is live");
+        room.on(RoomEvent.Disconnected, () => {
+          if (!cancelled) setStatus("Publisher disconnected");
+        });
+      } catch (publisherError) {
+        if (!cancelled) {
+          setError(publisherError.message || "Unable to publish screen");
+          setStatus("");
+        }
+      }
+    }
+
+    startPublisher();
+    return () => {
+      cancelled = true;
+      if (videoRef.current) {
+        tracksRef.current.forEach((track) => track.detach(videoRef.current));
+      }
+      tracksRef.current.forEach((track) => track.stop());
+      roomRef.current?.disconnect();
+    };
+  }, [token, url]);
+
+  function stopPublisher() {
+    roomRef.current?.disconnect();
+    onExit();
+  }
+
+  return (
+    <main className="publisher-page">
+      <section className="publisher-panel">
+        <p className="eyebrow">WebRTC / Publisher</p>
+        <h1>Browser sender</h1>
+        <p className="muted">{status || error}</p>
+        <video ref={videoRef} autoPlay muted playsInline className="publisher-preview" />
+        <button type="button" onClick={stopPublisher}>Stop sharing</button>
+      </section>
+    </main>
+  );
+}
+
+function PythonPublisherInfo({ onExit }) {
+  return (
+    <main className="join-page">
+      <section className="join-panel">
+        <p className="eyebrow">WebRTC / Publisher</p>
+        <h1>Python sender</h1>
+        <p className="muted">
+          Keep this page open and start the existing publisher in a terminal.
+        </p>
+        <pre className="command">cd webrtc{"\n"}python publisher.py</pre>
+        <button type="button" onClick={onExit}>Back</button>
+      </section>
+    </main>
+  );
+}
+
 function App() {
   const [room, setRoom] = React.useState("screen-share");
   const [identity, setIdentity] = React.useState("mobile-viewer");
   const [session, setSession] = React.useState(null);
   const [error, setError] = React.useState("");
+  const [mode, setMode] = React.useState("viewer");
+
+  function selectMode(nextMode) {
+    setMode(nextMode);
+    if (nextMode === "browser-publisher") {
+      setIdentity("browser-sender");
+    } else if (nextMode === "viewer") {
+      setIdentity("mobile-viewer");
+    }
+  }
 
   async function joinRoom(event) {
     event.preventDefault();
@@ -207,7 +319,8 @@ function App() {
     });
 
     try {
-      const query = new URLSearchParams({ room, identity });
+      const role = mode === "viewer" ? "viewer" : "publisher";
+      const query = new URLSearchParams({ room, identity, role });
       const response = await fetch(`/api/token?${query}`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to join");
@@ -223,6 +336,23 @@ function App() {
     }
   }
 
+  if (session && mode === "browser-publisher") {
+    return (
+      <BrowserPublisher
+        token={session.token}
+        url={session.url}
+        onExit={() => {
+          setSession(null);
+          setMode("viewer");
+        }}
+      />
+    );
+  }
+
+  if (mode === "python-publisher") {
+    return <PythonPublisherInfo onExit={() => setMode("viewer")} />;
+  }
+
   if (session) {
     return <MediaRoom token={session.token} url={session.url} />;
   }
@@ -232,7 +362,18 @@ function App() {
       <section className="join-panel">
         <p className="eyebrow">WebRTC / SFU</p>
         <h1>Screen share</h1>
-        <p className="muted">Join a private room to watch the live desktop.</p>
+        <p className="muted">Choose how this computer should connect to the room.</p>
+        <div className="mode-grid">
+          <button type="button" onClick={() => selectMode("viewer")}>
+            Watch stream
+          </button>
+          <button type="button" onClick={() => selectMode("browser-publisher")}>
+            Publish from browser
+          </button>
+          <button type="button" onClick={() => selectMode("python-publisher")}>
+            Use Python publisher
+          </button>
+        </div>
         <form onSubmit={joinRoom}>
           <label>
             Room

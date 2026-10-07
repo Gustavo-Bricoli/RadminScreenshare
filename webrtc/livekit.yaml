@@ -3,7 +3,7 @@ port: 7880
 rtc:
   udp_port: 17882
   tcp_port: 17881
-  node_ip: 26.123.65.96
+  node_ip: 192.168.68.101
   use_ice_lite: true
 
 keys:

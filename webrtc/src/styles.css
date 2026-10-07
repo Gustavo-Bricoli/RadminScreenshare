@@ -33,6 +33,13 @@ label { display: grid; gap: 7px; color: #b7c4ce; font: 13px Arial, sans-serif; }
 input { width: 100%; padding: 11px 12px; border: 1px solid #3a4d59; border-radius: 3px; color: #e9eef5; background: #0b1118; }
 button { padding: 12px 16px; border: 0; border-radius: 3px; color: #07120f; background: #61d0b3; cursor: pointer; font: 700 14px Arial, sans-serif; }
 .error { color: #ff9d91; font: 13px Arial, sans-serif; }
+.mode-grid { display: grid; gap: 8px; margin-top: 24px; }
+.mode-grid button { color: #dce9ee; background: #20323d; text-align: left; }
+.mode-grid button:hover { background: #2a4653; }
+.publisher-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top right, #1d3542, #0b1118 55%); }
+.publisher-panel { width: min(100%, 860px); padding: 36px; border: 1px solid #30424e; background: #111b24; box-shadow: 0 24px 80px #0008; }
+.publisher-preview { display: block; width: 100%; max-height: 62vh; margin: 24px 0; background: #05080a; object-fit: contain; }
+.command { padding: 14px; overflow: auto; color: #d8eee7; background: #0b1118; font: 13px Consolas, monospace; }
 
 .room { width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: #070b0f; }
 .room-header { display: flex; gap: 9px; align-items: center; height: 48px; padding: 0 18px; color: #b7c4ce; font: 13px Arial, sans-serif; border-bottom: 1px solid #1c2933; }
@@ -43,11 +50,13 @@ button { padding: 12px 16px; border: 0; border-radius: 3px; color: #07120f; back
 .fullscreen-button { position: absolute; top: 20px; right: 20px; z-index: 1; padding: 9px 12px; border: 1px solid #ffffff40; border-radius: 3px; color: #fff; background: #101820d9; }
 .fullscreen-button:hover { background: #263640; }
 .fullscreen-button:focus-visible { outline: 2px solid #61d0b3; outline-offset: 2px; }
-.screen-stage:fullscreen, .screen-stage:-webkit-full-screen { width: 100vw; height: 100vh; height: 100dvh; padding: 0; background: #000; }
-.screen-stage:fullscreen .screen-video, .screen-stage:-webkit-full-screen .screen-video { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+.screen-stage:fullscreen, .screen-stage:-webkit-full-screen { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; height: 100dvh; min-width: 0; min-height: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); overflow: hidden; background: #000; }
+.screen-stage:fullscreen .screen-video, .screen-stage:-webkit-full-screen .screen-video { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; object-position: center; }
+.screen-stage:fullscreen .screen-video video, .screen-stage:-webkit-full-screen .screen-video video { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; object-position: center; }
 .screen-stage:fullscreen .fullscreen-button, .screen-stage:-webkit-full-screen .fullscreen-button { top: 16px; right: 16px; }
 .room.is-fullscreen { position: fixed; inset: 0; z-index: 9999; width: 100vw; height: 100vh; height: 100dvh; }
 .room.is-fullscreen .room-header { display: none; }
-.room.is-fullscreen .screen-stage { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; }
-.room.is-fullscreen .screen-video { width: 100%; height: 100%; object-fit: contain !important; object-position: center; }
+.room.is-fullscreen .screen-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-width: 0; min-height: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); overflow: hidden; }
+.room.is-fullscreen .screen-video { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain !important; object-position: center; }
+.room.is-fullscreen .screen-video video { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; object-position: center; }
 .empty-state { display: grid; place-items: center; height: 100%; color: #81909c; font: 14px Arial, sans-serif; }

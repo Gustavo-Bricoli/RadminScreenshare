@@ -13,10 +13,13 @@ python ..\screenshot_audioopus_viewer.py
 - `docker-compose.yml`: local LiveKit SFU.
 - `server.mjs`: Node token/health server.
 - `src/`: React browser viewer.
-- `publisher.py`: separate Python LiveKit publisher for screen and system audio.
+- `publisher.py`: Python LiveKit publisher for screen and system audio.
+- `src/main.jsx`: viewer and browser-based publisher modes.
 - `video_sender.py` and `audio_sender.py` in the parent directory remain legacy modules and are not imported here.
 
-The React viewer is subscribe-only. `publisher.py` captures the desktop/audio and publishes one WebRTC connection to LiveKit.
+The React app can watch a stream or publish from the browser. The browser publisher
+uses the native `getDisplayMedia` capture flow and asks the user to choose a screen,
+window, or tab. `publisher.py` remains available when Python capture is preferred.
 
 ## Local start
 
@@ -27,7 +30,7 @@ Copy-Item .env.example .env
 docker compose up -d
 npm run dev
 
-python publisher.py
+python publisher.py  # optional: use the Python publisher instead of the browser
 ```
 
 Install the publisher dependencies once:
